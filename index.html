@@ -1,46 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Compress PDF</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center px-4">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
 
   <h1 class="text-3xl font-bold mb-6">Compress your PDF</h1>
 
-  <!-- Upload Box -->
-  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center">
-    <input id="pdfInput" type="file" accept="application/pdf" class="mb-4" />
-    <button id="compressBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md text-center">
+    <input id="fileInput" type="file" accept="application/pdf" class="mb-4" />
+    <button onclick="uploadPDF()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
       Compress PDF
     </button>
     <div id="status" class="mt-4 text-sm text-gray-600"></div>
   </div>
 
-  <!-- JS -->
   <script>
-    const input = document.getElementById('pdfInput');
-    const button = document.getElementById('compressBtn');
-    const status = document.getElementById('status');
-
-    button.addEventListener('click', () => {
-      const file = input.files[0];
+    async function uploadPDF() {
+      const fileInput = document.getElementById('fileInput');
+      const status = document.getElementById('status');
+      const file = fileInput.files[0];
 
       if (!file) {
-        status.innerText = "Please select a PDF file first.";
+        status.innerText = 'Please select a PDF file.';
         return;
       }
 
-      if (file.type !== "application/pdf") {
-        status.innerText = "Only PDF files are allowed.";
-        return;
-      }
+      status.innerText = 'Uploading and compressing... ⏳';
 
-      // Пока просто выводим имя файла
-      status.innerText = `Selected: ${file.name}\n📄 Ready for compression (not implemented yet)`;
-    });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('https://2a1e0b1a-b7d0-4fa2-a910-0592543a0593-00-2uaiqwka4e7hp.sisko.replit.dev/compress', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Compression failed.');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        status.innerHTML = `✅ Done! <a href="${url}" download="${file.name.replace('.pdf', '-compressed.pdf')}" class="text-blue-600 underline">Download PDF</a>`;
+      } catch (err) {
+        console.error(err);
+        status.innerText = '❌ Error compressing file.';
+      }
+    }
   </script>
 
 </body>
 </html>
+

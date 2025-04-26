@@ -38,7 +38,7 @@ async function uploadPDF () {
   const fd = new FormData(); fd.append('file', file);
 
   /* API = тот же origin */
-  const API = window.location.origin;
+  const API = 'https://pdf-compress.fly.dev';
 
   /* 1. отправляем файл */
   const r = await fetch(`${API}/compress`, { method:'POST', body:fd });

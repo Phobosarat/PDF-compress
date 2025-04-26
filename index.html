@@ -1,70 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Compress PDF</title>
+  <meta charset="UTF-8">
+  <title>PDF Compressor</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
 
   <h1 class="text-3xl font-bold mb-6">Compress your PDF</h1>
 
-  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md text-center">
-    <input id="fileInput" type="file" accept="application/pdf" class="mb-4" />
-    <button onclick="uploadPDF()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-      Compress PDF
-    </button>
-    <div id="status" class="mt-4 text-sm text-gray-600"></div>
+  <div class="bg-white rounded-xl shadow p-6 w-full max-w-md text-center">
+    <input id="fileInput" type="file" accept="application/pdf" class="mb-4">
+    <button onclick="uploadPDF()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Compress PDF</button>
+
+    <div id="status" class="mt-4 text-sm text-gray-700"></div>
+    <div id="bar" class="w-full h-2 bg-gray-300 rounded mt-2 hidden">
+      <div id="fill" class="h-full bg-blue-600 rounded" style="width:0"></div>
+    </div>
   </div>
 
-  <script>
-async function uploadPDF () {
-  const fileInput = document.getElementById('fileInput');
-  const status    = document.getElementById('status');
-  const file      = fileInput.files[0];
-  if (!file) { status.innerText = 'Please select a PDF file.'; return; }
+<script>
+const API = "https://2a1e0b1a-b7d0-4fa2-a910-0592543a0593-00-2uaiqwka4e7hp.sisko.replit.dev";
 
-  status.innerText = 'Uploading… ⏳';
+async function uploadPDF() {
+  const file    = document.getElementById('fileInput').files[0];
+  const status  = document.getElementById('status');
+  const bar     = document.getElementById('bar');
+  const fill    = document.getElementById('fill');
+  if (!file) { status.textContent = "Choose a PDF"; return; }
 
-  const formData = new FormData();
-  formData.append('file', file);
+  status.textContent = "Uploading…";
+  bar.classList.remove('hidden'); fill.style.width = "0%";
 
-  try {
-    const res = await fetch(
-      'https://2a1e0b1a-b7d0-4fa2-a910-0592543a0593-00-2uaiqwka4e7hp.sisko.replit.dev/compress',
-      { method: 'POST', body: formData }
-    );
+  const fd = new FormData(); fd.append('file', file);
+  const r  = await fetch(`${API}/compress`, { method:"POST", body:fd });
+  if (!r.ok) { status.textContent = "Upload failed"; return; }
+  const { taskId } = await r.json();
 
-    // извлекаем task-id из заголовка
-    const taskId = res.headers.get('task-id');
-
-    // если taskId есть — показываем прогресс
-    if (taskId) {
-      const poll = setInterval(async () => {
-        const p = await fetch(
-          `https://2a1e0b1a-b7d0-4fa2-a910-0592543a0593-00-2uaiqwka4e7hp.sisko.replit.dev/status/${taskId}`
-        ).then(r => r.json());
-
-        status.innerText = `Compressing: ${p.progress}%`;
-        if (p.progress >= 100) clearInterval(poll);
-      }, 2000);
+  /* polling */
+  const poll = setInterval(async () => {
+    const p = await fetch(`${API}/status/${taskId}`).then(r=>r.json());
+    if (p.progress >= 0) {
+      status.textContent = `Compressing: ${p.progress}%`;
+      fill.style.width   = p.progress + "%";
     }
-
-    if (!res.ok) throw new Error('Compression failed.');
-
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    status.innerHTML =
-      `✅ Done! <a href="${url}" download="${file.name.replace('.pdf','-compressed.pdf')}" class="text-blue-600 underline">Download PDF</a>`;
-  } catch (err) {
-    console.error(err);
-    status.innerText = '❌ Error compressing file.';
-  }
+    if (p.progress === 100) {
+      clearInterval(poll);
+      status.textContent = "Downloading…";
+      const blob = await fetch(`${API}/download/${taskId}`).then(r=>r.blob());
+      const url  = URL.createObjectURL(blob);
+      status.innerHTML = `✅ Done! <a href="${url}" download="${file.name.replace('.pdf','-compressed.pdf')}" class="underline text-blue-600">Download PDF</a>`;
+    }
+    if (p.progress < 0) { clearInterval(poll); status.textContent = "❌ Error"; }
+  }, 2000);
 }
 </script>
-
-
 </body>
 </html>
-

@@ -1,23 +1,28 @@
-# Dockerfile – production image for Fly.io
-# 1. Use small Alpine Node image
+# Используем образ Node.js (Alpine для компактности)
 FROM node:20-alpine
 
-# 2. Install Ghostscript & qpdf for PDF compression
+# Устанавливаем Ghostscript и qpdf (необходимы для работы)
 RUN apk add --no-cache ghostscript qpdf
 
-# 3. Create app directory
+# Создаем рабочую директорию приложения
 WORKDIR /app
 
-# 4. Copy dependency manifests & install deps
+# Создаем директорию для временных файлов и задаем права доступа
+RUN mkdir -p /app/tmp && chmod 777 /app/tmp
+
+# Копируем файлы зависимостей и устанавливаем их
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# 5. Copy source code
+# Копируем исходный код приложения
 COPY . .
 
-# 6. Expose port & set env
+# Переменные окружения
 ENV PORT=3000
+ENV TMP_DIR=/app/tmp
+
+# Открываем порт, который слушает приложение
 EXPOSE 3000
 
-# 7. Start server
+# Запускаем приложение
 CMD ["node", "server.js"]

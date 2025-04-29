@@ -31,7 +31,6 @@
   const fill      = document.getElementById('fill');
   const btn       = document.getElementById('btn');
 
-  // URL бэкенда; можно переопределить глобальной переменной до загрузки скрипта
   const API = window.API_URL || 'https://pdf-compress.fly.dev';
 
   btn.addEventListener('click', async () => {
@@ -51,30 +50,36 @@
 
       const { taskId } = await r.json();
 
-      // Polling progress
       const pollId = setInterval(async () => {
-  try {
-    const res = await fetch(`${API}/status/${taskId}`);
-    const { progress = -1, error = false } = await res.json();
+        try {
+          const res = await fetch(`${API}/status/${taskId}`);
+          const { progress = -1, error = false } = await res.json();
 
-    if (error || progress < 0) throw new Error('Compression error');
+          if (error || progress < 0) throw new Error('Compression error');
 
-    updateBar(progress);
-    setStatus(`Compressing… ${progress}%`);
+          updateBar(progress);
+          setStatus(`Compressing… ${progress}%`);
 
-    if (progress === 100) { // ⬅️ Исправить здесь!
-      clearInterval(pollId);
-      await download(taskId, file.name);
+          if (progress === 100) {
+            clearInterval(pollId);
+            await download(taskId, file.name);
+          }
+        } catch (err) {
+          clearInterval(pollId);
+          console.error(err);
+          setStatus('❌ ' + err.message, true);
+          btn.disabled = false;
+          fill.style.width = '0%';
+        }
+      }, 2000);
+
+    } catch (err) {
+      console.error(err);
+      setStatus('❌ ' + err.message, true);
+      btn.disabled = false;
+      fill.style.width = '0%';
     }
-  } catch (err) {
-    clearInterval(pollId);
-    console.error(err);
-    setStatus('❌ ' + err.message, true);
-    btn.disabled = false;
-    fill.style.width = '0%';
-  }
-}, 2000);
-
+  });
 
   function setStatus(msg, isError = false) {
     status.textContent = msg;
@@ -100,7 +105,9 @@
       const a    = document.createElement('a');
       a.href = url;
       a.download = origName.replace(/\.pdf$/i, '-compressed.pdf');
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setStatus('✅ Done!');
     } catch (err) {
